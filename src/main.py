@@ -24,16 +24,14 @@ def display_current(filename: str):
     os.remove(path=filename)
     return df
 
-def save_changes(submit_changes: Any, filename: str, df: pd.DataFrame):
-    if submit_changes:
-        df.to_csv(filename, index=False)
-        client.upload_file(
-            Bucket="lopo-streamlit", 
-            Key=filename, 
-            Filename=filename
-        )
-        os.remove(filename)
-        st.experimental_rerun()
+def save_changes(filename: str, df: pd.DataFrame):
+    df.to_csv(filename, index=False)
+    client.upload_file(
+        Bucket="lopo-streamlit", 
+        Key=filename, 
+        Filename=filename
+    )
+    os.remove(filename)
 
 
 with st.sidebar:
@@ -56,12 +54,21 @@ with st.sidebar:
             label="Add"
         )
         if rg_btn_add:
-            df_sdtm = display_current(filename="df_sdtm.csv").insert(loc=10+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
-            df_adam = display_current(filename="df_adam.csv").insert(loc=10+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
-            df_tlg = display_current(filename="df_lopo.csv").insert(loc=10+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
-            save_changes(submit_changes = rg_btn_add, filename = "df_sdtm.csv", df = df_sdtm)
-            save_changes(submit_changes = rg_btn_add, filename = "df_adam.csv", df = df_adam)
-            save_changes(submit_changes = rg_btn_add, filename = "df_lopo.csv", df = df_tlg)
+            if f"reporting_group_{rg_add}" in l_rep_group:
+                st.error("🚨 This reporting group already exists.")
+            else:
+                df_sdtm = display_current(filename="df_sdtm.csv")
+                df_sdtm.insert(loc=10+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
+                df_adam = display_current(filename="df_adam.csv")
+                df_adam.insert(loc=10+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
+                df_tlg = display_current(filename="df_lopo.csv")
+                df_tlg.insert(loc=14+len(l_rep_group), column=f"reporting_group_{rg_add}", value=False)
+                save_changes(filename = "df_sdtm.csv", df = df_sdtm)
+                save_changes(filename = "df_adam.csv", df = df_adam)
+                save_changes(filename = "df_lopo.csv", df = df_tlg)
+                st.experimental_rerun()
+            
+            
 
     with st.expander("Delete a reporting group"):
         rg_delete = st.selectbox(
@@ -78,9 +85,10 @@ with st.sidebar:
             df_adam = df_adam.drop(rg_delete, axis=1)
             df_tlg = display_current(filename="df_lopo.csv")
             df_tlg = df_tlg.drop(rg_delete, axis=1)
-            save_changes(submit_changes = rg_btn_delete, filename = "df_sdtm.csv", df = df_sdtm)
-            save_changes(submit_changes = rg_btn_delete, filename = "df_adam.csv", df = df_adam)
-            save_changes(submit_changes = rg_btn_delete, filename = "df_lopo.csv", df = df_tlg)
+            save_changes(filename = "df_sdtm.csv", df = df_sdtm)
+            save_changes(filename = "df_adam.csv", df = df_adam)
+            save_changes(filename = "df_lopo.csv", df = df_tlg)
+            st.success(f"✅ {rg_delete} has been deleted.")
     
 # if "df_value_sdtm" not in st.session_state:
 #     st.session_state.df_value_sdtm = df_sdtm
@@ -106,7 +114,9 @@ def encapsule_logic_edited_workflow(filename: str, sheet: str):
     submit_changes = st.button(
         label="Submit changes"
     )
-    save_changes(submit_changes = submit_changes, filename = filename, df = edited_df_sdtm)
+    if submit_changes:
+        save_changes(filename = filename, df = edited_df_sdtm)
+        st.experimental_rerun()
 
 if sheet == "SDTM":
     encapsule_logic_edited_workflow(
